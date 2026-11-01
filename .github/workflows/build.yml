@@ -1,5 +1,4 @@
-
-name: Build Roblox Studio AI Android APK
+name: Build Roblox Studio AI APK
 
 on:
   workflow_dispatch:
@@ -11,65 +10,60 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Download project files
-      - name: Checkout project
+      - name: Check out source code
         uses: actions/checkout@v4
 
-      # 2. Install Java
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # 3. Configure Gradle
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      # 4. Install Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # 5. Install Android SDK packages
-      - name: Install SDK packages
-        run: |
-          sdkmanager --install "platform-tools"
-          sdkmanager --install "platforms;android-35"
-          sdkmanager --install "build-tools;35.0.0"
-
-      # 6. Accept Android licenses
-      - name: Accept Android licenses
+      - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses || true
 
-      # 7. Check Android project
-      - name: Check project files
+      - name: Install Android SDK packages
         run: |
-          if [ ! -f "./gradlew" ]; then
-            echo "ERROR: gradlew not found in project root"
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Check Android Gradle project
+        run: |
+          if [ ! -f "gradlew" ]; then
+            echo "ERROR: gradlew was not found in the repository root."
+            echo "Upload an Android Gradle project with its Gradle wrapper."
             exit 1
           fi
 
-          if [ ! -d "./app" ]; then
-            echo "ERROR: app folder not found"
+          if [ ! -f "settings.gradle" ] && [ ! -f "settings.gradle.kts" ]; then
+            echo "ERROR: settings.gradle or settings.gradle.kts was not found."
             exit 1
           fi
 
-          chmod +x ./gradlew
+          if [ ! -d "app" ]; then
+            echo "ERROR: app/ module was not found."
+            exit 1
+          fi
 
-      # 8. Build APK
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+          chmod +x gradlew
 
-      # 9. Upload APK
-      - name: Upload Roblox Studio AI APK
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: RobloxStudioAI-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: '**/build/outputs/apk/debug/*.apk'
           if-no-files-found: error
           retention-days: 14
